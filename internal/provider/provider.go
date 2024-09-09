@@ -44,7 +44,7 @@ type kumaProvider struct {
 
 // Metadata returns the provider type name.
 func (p *kumaProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "kuma"
+	resp.TypeName = "upkuapi"
 	resp.Version = p.version
 }
 
