@@ -5,14 +5,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-	"terraform-provider-kuma/internal/kuma"
 	"terraform-provider-kuma/internal/provider"
 )
 
@@ -56,58 +53,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-}
-
-func main1() {
-	// host := "http://127.0.0.1:8000"
-	// username := "admin"
-	// password := "admin"
-	// client, err := kuma.NewClient(&host, &username, &password)
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
-	var item kuma.Monitor
-	p := `{
-	"id": 20,
-	"name": "demo_monitor",
-	"pathName": "demo_monitor",
-	"url": "https://google.com",
-	"method": "GET",
-	"port": 53,
-	"maxretries": 5,
-	"weight": 2000,
-	"active": true,
-	"type": "http",
-	"interval": 60,
-	"retryInterval": 20,
-	"expiryNotification": true,
-	"ignoreTls": true,
-	"packetSize": 56,
-	"maxredirects": 10,
-	"accepted_statuscodes": [
-		"200-299"
-	],
-	"dns_resolve_type": "A",
-	"dns_resolve_server": "1.1.1.1",
-	"gamedigGivenPortOnly": true,
-	"httpBodyEncoding": "json",
-	"includeSensitiveData": true
-}`
-
-	json.Unmarshal([]byte(p), &item)
-	var plan provider.MonitorResourceModel
-
-	// resp, err := client.CreateMonitor(kuma.Monitor{
-	// 	Name: "demo_monitor",
-	// 	Url:  "https://google.com",
-	// 	Type: "http",
-	// })
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
-	if err := provider.ConvertStruct(item, &plan, true); err != nil {
-		log.Println(err)
-	}
-
-	fmt.Printf("%+v", plan)
 }
