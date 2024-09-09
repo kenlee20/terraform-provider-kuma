@@ -3,25 +3,26 @@ package provider
 import (
 	"context"
 	"os"
+	"terraform-provider-kuma/internal/kuma"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ provider.Provider = &hashicupsProvider{}
+	_ provider.Provider = &kumaProvider{}
 )
 
 // New is a helper function to simplify provider server and testing implementation.
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &hashicupsProvider{
+		return &kumaProvider{
 			version: version,
 		}
 	}
@@ -33,8 +34,8 @@ type kumaProviderModel struct {
 	Password types.String `tfsdk:"password"`
 }
 
-// hashicupsProvider is the provider implementation.
-type hashicupsProvider struct {
+// Uptime KumaProvider is the provider implementation.
+type kumaProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
@@ -42,32 +43,38 @@ type hashicupsProvider struct {
 }
 
 // Metadata returns the provider type name.
-func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "hashicups"
+func (p *kumaProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "kuma"
 	resp.Version = p.version
 }
 
 // Schema defines the provider-level schema for configuration data.
-func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *kumaProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
-				Optional: true,
+				Description: "URL for Uptime Kuma API Server. May also be provided via KUMA_API_HOST environment variable.",
+				Optional:    true,
 			},
 			"username": schema.StringAttribute{
-				Optional: true,
+				Description: "Username for Uptime Kuma API. May also be provided via KUMA_API_USERNAME environment variable.",
+				Optional:    true,
 			},
 			"password": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: true,
+				Description: "Password for Uptime Kuma API. May also be provided via KUMA_API_PASSWORD environment variable.",
+				Optional:    true,
+				Sensitive:   true,
 			},
 		},
 	}
 }
 
-func (p *hashicupsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *kumaProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Retrieve provider data from configuration
 	var config kumaProviderModel
+
+	tflog.Info(ctx, "Configuring Kuma API client")
+
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -80,27 +87,27 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	if config.Host.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("host"),
-			"Unknown HashiCups API Host",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API host. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_HOST environment variable.",
+			"Unknown Uptime Kuma API Host",
+			"The provider cannot create the Uptime Kuma API client as there is an unknown configuration value for the Uptime Kuma API host. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the Uptime Kuma_HOST environment variable.",
 		)
 	}
 
 	if config.Username.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("username"),
-			"Unknown HashiCups API Username",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API username. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_USERNAME environment variable.",
+			"Unknown Uptime Kuma API Username",
+			"The provider cannot create the Uptime Kuma API client as there is an unknown configuration value for the Uptime Kuma API username. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the Uptime Kuma_USERNAME environment variable.",
 		)
 	}
 
 	if config.Password.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("password"),
-			"Unknown HashiCups API Password",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API password. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_PASSWORD environment variable.",
+			"Unknown Uptime Kuma API Password",
+			"The provider cannot create the Uptime Kuma API client as there is an unknown configuration value for the Uptime Kuma API password. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the Uptime Kuma_PASSWORD environment variable.",
 		)
 	}
 
@@ -133,9 +140,9 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	if host == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("host"),
-			"Missing HashiCups API Host",
-			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API host. "+
-				"Set the host value in the configuration or use the HASHICUPS_HOST environment variable. "+
+			"Missing Uptime Kuma API Host",
+			"The provider cannot create the Uptime Kuma API client as there is a missing or empty value for the Uptime Kuma API host. "+
+				"Set the host value in the configuration or use the Uptime Kuma_HOST environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -143,9 +150,9 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	if username == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("username"),
-			"Missing HashiCups API Username",
-			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API username. "+
-				"Set the username value in the configuration or use the HASHICUPS_USERNAME environment variable. "+
+			"Missing Uptime Kuma API Username",
+			"The provider cannot create the Uptime Kuma API client as there is a missing or empty value for the Uptime Kuma API username. "+
+				"Set the username value in the configuration or use the Uptime Kuma_USERNAME environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -153,9 +160,9 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	if password == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("password"),
-			"Missing HashiCups API Password",
-			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API password. "+
-				"Set the password value in the configuration or use the HASHICUPS_PASSWORD environment variable. "+
+			"Missing Uptime Kuma API Password",
+			"The provider cannot create the Uptime Kuma API client as there is a missing or empty value for the Uptime Kuma API password. "+
+				"Set the password value in the configuration or use the Uptime Kuma_PASSWORD environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -164,32 +171,45 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	// Create a new HashiCups client using the configuration values
-	client, err := hashicups.NewClient(&host, &username, &password)
+	ctx = tflog.SetField(ctx, "kuma_api_host", host)
+	ctx = tflog.SetField(ctx, "kuma_api_username", username)
+	ctx = tflog.SetField(ctx, "kuma_api_password", password)
+	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "kuma_api_password")
+
+	tflog.Debug(ctx, "Creating Kuma API client")
+
+	// Create a new Uptime Kuma client using the configuration values
+	client, err := kuma.NewClient(&host, &username, &password)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Create HashiCups API Client",
-			"An unexpected error occurred when creating the HashiCups API client. "+
+			"Unable to Create Uptime Kuma API Client",
+			"An unexpected error occurred when creating the Uptime Kuma API client. "+
 				"If the error is not clear, please contact the provider developers.\n\n"+
-				"HashiCups Client Error: "+err.Error(),
+				"Uptime Kuma Client Error: "+err.Error(),
 		)
 		return
 	}
 
-	// Make the HashiCups client available during DataSource and Resource
+	// Make the Uptime Kuma client available during DataSource and Resource
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
+
+	tflog.Info(ctx, "Configured Kuma API client", map[string]any{"success": true})
 }
 
 // DataSources defines the data sources implemented in the provider.
-func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+func (p *kumaProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewCoffeesDataSource,
+		NewTagsDataSource,
+		NewMonitorsDataSource,
 	}
 }
 
 // Resources defines the resources implemented in the provider.
-func (p *hashicupsProvider) Resources(_ context.Context) []func() resource.Resource {
-	return nil
+func (p *kumaProvider) Resources(_ context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		NewTagResource,
+		NewHttpMonitorResource,
+	}
 }

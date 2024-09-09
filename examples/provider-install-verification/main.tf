@@ -1,11 +1,26 @@
 terraform {
   required_providers {
-    hashicups = {
-      source = "gitlab.microfusion.cloud/kenli/kuma"
+    kuma = {
+      source = "registry.terraform.io/kenli/kuma"
     }
   }
 }
 
-provider "hashicups" {}
+provider "kuma" {
+  host     = "http://127.0.0.1:8000"
+  username = "admin"
+  password = "admin"
+}
 
-data "hashicups_coffees" "example" {}
+# resource "kuma_http_monitor" "name" {
+#   name        = "demo_monitor"
+#   description = "demo1"
+#   url         = "https://google.com"
+# }
+
+data "kuma_monitors" "name" {
+}
+
+output "name" {
+  value = data.kuma_monitors.name
+}
