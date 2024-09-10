@@ -3,6 +3,7 @@ package kuma
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -63,8 +64,8 @@ func (c *Client) CreateTag(tag Tag) (*Tag, error) {
 	return &newTag, nil
 }
 
-func (c *Client) DeleteTag(tagId string) error {
-	uri := fmt.Sprintf("/tags/%s", tagId)
+func (c *Client) DeleteTag(tagId int) error {
+	uri := fmt.Sprintf("/tags/%s", strconv.Itoa(tagId))
 	_, err := c.doRequest("DELETE", uri, nil)
 	if err != nil {
 		return err
@@ -73,11 +74,13 @@ func (c *Client) DeleteTag(tagId string) error {
 	return nil
 }
 
-func (c *Client) UpdateTag(tagId string, tagInfo Tag) (*Tag, error) {
-	err := c.DeleteTag(tagId)
+func (c *Client) UpdateTag(tagId int, tagInfo Tag) error {
+	rb, err := json.Marshal(tagInfo)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return c.CreateTag(tagInfo)
+	_, err = c.doRequest("PATCH", fmt.Sprintf("/tags/%s", strconv.Itoa(tagId)), strings.NewReader(string(rb)))
+
+	return err
 }

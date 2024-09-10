@@ -45,6 +45,14 @@ func (c *Client) GetMonitor(id int) (*Monitor, error) {
 }
 
 func (c *Client) CreateMonitor(monitor Monitor) (*int, error) {
+	defaultNotification, err := c.GetDefaultNotifications()
+	if err != nil {
+		return nil, err
+	}
+
+	monitor.NotificationIDList = append(monitor.NotificationIDList, defaultNotification...)
+
+	// Marshal the monitor
 	rb, err := json.Marshal(monitor)
 	if err != nil {
 		return nil, err

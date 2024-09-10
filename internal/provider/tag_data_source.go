@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"terraform-provider-kuma/internal/kuma"
+	"terraform-provider-upkuapi/internal/kuma"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -19,16 +19,8 @@ func NewTagsDataSource() datasource.DataSource {
 	return &tagsDataSource{}
 }
 
-// coffeesDataSourceModel maps the data source schema data.
 type tagsDataSourceModel struct {
-	Tags []tagModel `tfsdk:"tags"`
-}
-
-// coffeesModel maps coffees schema data.
-type tagModel struct {
-	ID    types.Int64  `tfsdk:"id"`
-	Name  types.String `tfsdk:"name"`
-	Color types.String `tfsdk:"color"`
+	Tags []Tag `tfsdk:"tags"`
 }
 
 type tagsDataSource struct {
@@ -76,7 +68,7 @@ func (d *tagsDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	}
 
 	for _, tag := range tags {
-		tagState := tagModel{
+		tagState := Tag{
 			ID:    types.Int64Value(int64(tag.ID)),
 			Name:  types.StringValue(tag.Name),
 			Color: types.StringValue(tag.Color),

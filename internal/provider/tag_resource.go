@@ -3,8 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"terraform-provider-kuma/internal/kuma"
+	"terraform-provider-upkuapi/internal/kuma"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -26,12 +25,6 @@ func NewTagResource() resource.Resource {
 
 type tagResource struct {
 	client *kuma.Client
-}
-
-type tagResourceModel struct {
-	ID    types.String `tfsdk:"id"`
-	Name  types.String `tfsdk:"name"`
-	Color types.String `tfsdk:"color"`
 }
 
 // Metadata returns the resource type name.
@@ -59,7 +52,7 @@ func (r *tagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 // Create creates the resource and sets the initial Terraform state.
 func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan tagResourceModel
+	var plan Tag
 	var item kuma.Tag
 
 	diags := req.Plan.Get(ctx, &plan)
@@ -100,7 +93,7 @@ func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, re
 // Read refreshes the Terraform state with the latest data.
 func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get current state
-	var state tagResourceModel
+	var state Tag
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -111,13 +104,13 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Kuma Tag",
-			fmt.Sprintf("Could not read Kuma Tag %s, ID: %s %s", state.Name.ValueString(), state.ID.ValueString(), err.Error()),
+			fmt.Sprintf("Could not read Kuma Tag %s, ID: %d %s", state.Name.ValueString(), state.ID.ValueInt64(), err.Error()),
 		)
 		return
 	}
 
 	// Overwrite items with refreshed state
-	state.ID = types.StringValue(strconv.Itoa(tag.ID))
+	state.ID = types.Int64Value(int64(tag.ID))
 	state.Color = types.StringValue(tag.Color)
 
 	// Set refreshed state
@@ -130,11 +123,63 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, o_plan Tag
+	var item kuma.Tag
+
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if err := ConvertStruct(plan, &item, false); err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Convert tag struct from terraform",
+			err.Error(),
+		)
+		return
+	}
+
+	// Update existing tag
+	err := r.client.UpdateTag(int(plan.ID.ValueInt64()), item)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating tag",
+			"Could not update tag, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	// Fetch updated tag
+	updatedTag, err := r.client.GetTag(plan.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Kuma Tag",
+			fmt.Sprintf("Could not read Kuma Tag %s, ID: %d %s", plan.Name.ValueString(), plan.ID.ValueInt64(), err.Error()),
+		)
+		return
+	}
+
+	// Overwrite items with refreshed state
+	if err := ConvertStruct(*updatedTag, &plan, true); err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Convert tag struct to terraform",
+			err.Error(),
+		)
+		return
+	}
+
+	// Set refreshed state
+	diags = resp.State.Set(ctx, o_plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *tagResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state tagResourceModel
+	var state Tag
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -142,7 +187,7 @@ func (r *tagResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	}
 
 	// Delete existing order
-	err := r.client.DeleteTag(state.ID.ValueString())
+	err := r.client.DeleteTag(int(state.ID.ValueInt64()))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Kuma Tag",

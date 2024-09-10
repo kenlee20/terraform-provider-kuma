@@ -6,7 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"terraform-provider-kuma/internal/kuma"
+	"terraform-provider-upkuapi/internal/kuma"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -65,7 +65,6 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 				Computed:            true,
 				MarkdownDescription: "Example identifier",
-				Default:             stringdefault.StaticString(""),
 			},
 			"type": schema.StringAttribute{
 				Computed:            true,
@@ -82,18 +81,6 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Example identifier",
 				Default:             stringdefault.StaticString("GET"),
 			},
-			// "active": schema.BoolAttribute{
-			// 	Optional:            true,
-			// 	Computed:            true,
-			// 	MarkdownDescription: "Example identifier",
-			// 	Default:             booldefault.StaticBool(true),
-			// },
-			// "timeout": schema.Int64Attribute{
-			// 	Optional:            true,
-			// 	Computed:            true,
-			// 	MarkdownDescription: "Example identifier",
-			// 	Default:             int64default.StaticInt64(60),
-			// },
 			"interval": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
@@ -124,6 +111,12 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Example identifier",
 				Default:             int64default.StaticInt64(10),
 			},
+			"notification_list": schema.ListAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Example identifier",
+				ElementType:         types.Int64Type,
+			},
 			"accepted_statuscodes": schema.ListAttribute{
 				Optional:            true,
 				Computed:            true,
@@ -143,7 +136,7 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 				Computed:            true,
 				MarkdownDescription: "Example identifier",
-				Default:             booldefault.StaticBool(true),
+				Default:             booldefault.StaticBool(false),
 			},
 			"upside_down": schema.BoolAttribute{
 				Optional:            true,

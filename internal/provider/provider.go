@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 	"os"
-	"terraform-provider-kuma/internal/kuma"
+	"terraform-provider-upkuapi/internal/kuma"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -203,6 +203,7 @@ func (p *kumaProvider) DataSources(_ context.Context) []func() datasource.DataSo
 	return []func() datasource.DataSource{
 		NewTagsDataSource,
 		NewMonitorsDataSource,
+		NewNotificationsDataSource,
 	}
 }
 

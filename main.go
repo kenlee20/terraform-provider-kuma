@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-	"terraform-provider-kuma/internal/provider"
+	"terraform-provider-upkuapi/internal/provider"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website

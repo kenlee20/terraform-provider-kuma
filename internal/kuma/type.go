@@ -109,3 +109,12 @@ type Monitor struct {
 	KafkaProducerSaslOptions            string   `json:"kafkaProducerSaslOptions,omitempty"`
 	IncludeSensitiveData                bool     `json:"includeSensitiveData,omitempty"`
 }
+
+type Notification struct {
+	ID        int    `json:"id"`
+	UserId    int    `json:"userId"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Active    bool   `json:"active"`
+	IsDefault bool   `json:"isDefault"`
+}
