@@ -393,40 +393,6 @@ func (r *httpMonitorResource) Update(ctx context.Context, req resource.UpdateReq
 		}
 	}
 
-	// for _, tag := range item.Tags {
-	// 	if tag.TagId != 0 {
-	// 		continue
-	// 	}
-
-	// 	for _, stateTag := range monitor.Tags {
-	// 		if stateTag.Name == tag.Name {
-	// 			tag.TagId = state.ID
-	// 			tag.Value = stateTag.Value
-
-	// 			if err := r.client.DeleteMonitorTag(item.ID, kuma.MonitorTag{
-	// 				TagId: state.ID,
-	// 				Value: stateTag.Value,
-	// 			}); err != nil {
-	// 				resp.Diagnostics.AddError(
-	// 					"Error Updating Kuma Tag",
-	// 					fmt.Sprintf("Could not Delete Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
-	// 				)
-	// 				return
-	// 			}
-	// 			break
-	// 		}
-	// 	}
-	// 	tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", tag))
-
-	// 	if err := r.client.CreateMonitorTag(item.ID, tag); err != nil {
-	// 		resp.Diagnostics.AddError(
-	// 			"Error Updating Kuma Tag",
-	// 			fmt.Sprintf("Could not create Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
-	// 		)
-	// 		return
-	// 	}
-	// }
-
 	monitor, err = r.client.GetMonitor(plan.ID.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
