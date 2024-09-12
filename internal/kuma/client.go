@@ -3,6 +3,7 @@ package kuma
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -26,8 +27,8 @@ func NewClient(host, username, password *string) (*Client, error) {
 	c := Client{
 		HTTPClient: &http.Client{Timeout: 300 * time.Second},
 		HostURL:    clearHost,
-		Retry:      5,
-		Interval:   2 * time.Second,
+		Retry:      30,
+		Interval:   5 * time.Second,
 	}
 
 	if username == nil || password == nil {
@@ -70,21 +71,31 @@ func (c *Client) doRequest(method string, uri string, rb io.Reader, opts ...requ
 	req.Header.Add("Content-Type", options.ContentType)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	res, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
+	for i := 0; i < int(c.Retry); i++ {
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
+		res, err := c.HTTPClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode == 200 {
+			body, err := io.ReadAll(res.Body)
+			if res.StatusCode != http.StatusOK {
+				error_messgae := fmt.Sprintf("method %s API %s", method, clearUri)
+				return nil, fmt.Errorf("status: %d, message: %s, body: %s", res.StatusCode, error_messgae, body)
+			}
+
+			if err != nil {
+				return nil, err
+			}
+
+			return body, nil
+		}
+
+		log.Printf("Request failed (attempt %d/%d): %v", i+1, int(c.Retry), err)
+		time.Sleep(c.Interval)
 	}
 
-	if res.StatusCode != http.StatusOK {
-		error_messgae := fmt.Sprintf("method %s API %s", method, clearUri)
-		return nil, fmt.Errorf("status: %d, message: %s, body: %s", res.StatusCode, error_messgae, body)
-	}
-
-	return body, err
+	return nil, fmt.Errorf("request failed after %d attempts err:%v", c.Retry, err)
 }

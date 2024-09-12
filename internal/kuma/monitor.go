@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func (c *Client) GetMonitors() ([]Monitor, error) {
@@ -98,7 +97,6 @@ func (c *Client) UpdateMonitor(monitorID int64, monitor Monitor) error {
 
 func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) (err error) {
 	tagSetup := make(map[string]any)
-	count := 0
 
 	tag, err := c.GetTag(tagSet.Name)
 	if err != nil {
@@ -113,26 +111,12 @@ func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) (err error
 		return err
 	}
 
-	for {
-		if count > 5 {
-			return err
-		}
+	_, err = c.doRequest("POST", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag", strings.NewReader(string(rb)))
 
-		_, err = c.doRequest("POST", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag", strings.NewReader(string(rb)))
-		if err != nil {
-			time.Sleep(c.Interval)
-			count++
-			continue
-		} else {
-			break
-		}
-	}
-	return nil
+	return err
 }
 
 func (c *Client) DeleteMonitorTag(monitorID int64, tagSet MonitorTag) (err error) {
-	count := 0
-
 	tagSetup := make(map[string]any)
 
 	tagSetup["tag_id"] = tagSet.TagId
@@ -143,18 +127,7 @@ func (c *Client) DeleteMonitorTag(monitorID int64, tagSet MonitorTag) (err error
 		return err
 	}
 
-	for {
-		if count > 5 {
-			return err
-		}
-		_, err = c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag/", strings.NewReader(string(tag)))
-		if err != nil {
-			time.Sleep(c.Interval)
-			count++
-			continue
-		} else {
-			break
-		}
-	}
-	return nil
+	_, err = c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag/", strings.NewReader(string(tag)))
+
+	return err
 }
