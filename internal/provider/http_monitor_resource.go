@@ -42,85 +42,81 @@ func (r *httpMonitorResource) Metadata(ctx context.Context, req resource.Metadat
 func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "Example resource",
+		MarkdownDescription: "Provides an Moniotr resource. This allows monitors to be created, updated, and deleted.",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int64Attribute{
-				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for monitor display name.",
 			},
 			"path_name": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				Computed: true,
 			},
 			"description": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Describes the monitor.",
 			},
 			"type": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Example identifier",
-				Default:             stringdefault.StaticString("http"),
+				Computed: true,
+				Default:  stringdefault.StaticString("http"),
 			},
 			"url": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for monitoring url.",
 			},
 			"method": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for http monitor method. default to `GET`.",
 				Default:             stringdefault.StaticString("GET"),
 			},
 			"interval": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for heartbeat Interval. default to `60`.",
 				Default:             int64default.StaticInt64(60),
 			},
 			"retry_interval": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for Retry every secend. default to `20`.",
 				Default:             int64default.StaticInt64(20),
 			},
 			"resend_interval": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for resend every times. defaults to `0`",
 				Default:             int64default.StaticInt64(0),
 			},
 			"max_retries": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for maximum retries before the service is marked as down and a notification is sent. default to `5`.",
 				Default:             int64default.StaticInt64(5),
 			},
 			"max_redirects": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for maximum number of redirects to follow. Set to 0 to disable redirects. defaults to `10`",
 				Default:             int64default.StaticInt64(10),
 			},
 			"notification_list": schema.ListAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for notification id list, automatically enable default notifications.",
 				ElementType:         types.Int64Type,
 			},
 			"accepted_statuscodes": schema.ListAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for Accepted Status Codes. Select status codes which are considered as a successful response., defaults to `[\"200-299\"]`",
 				ElementType:         types.StringType,
 				Default: listdefault.StaticValue(
 					types.ListValueMust(types.StringType, []attr.Value{types.StringValue("200-299")}),
@@ -129,24 +125,43 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 			"expiry_notification": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for Certificate Expiry Notification. defaults to `true`.",
 				Default:             booldefault.StaticBool(true),
 			},
 			"ignore_tls": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for ignore TLS/SSL error for HTTPS websites, defaults to `false`.",
 				Default:             booldefault.StaticBool(false),
 			},
 			"upside_down": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Example identifier",
+				MarkdownDescription: "Options for Upside Down Mode. Flip the status upside down. If the service is reachable, it is DOWN. defaults to `false`",
 				Default:             booldefault.StaticBool(false),
+			},
+			"tags": schema.SetNestedAttribute{
+				MarkdownDescription: "Options for monitor tag",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							Required:            true,
+							MarkdownDescription: "Options for name of tag.",
+						},
+						"value": schema.StringAttribute{
+							Required:            true,
+							MarkdownDescription: "Options for value of tag.",
+						},
+						"tag_id": schema.Int64Attribute{
+							Computed: true,
+						},
+					},
+				},
+				Optional: true,
+				Computed: true,
 			},
 		},
 	}
-
 }
 
 func (r *httpMonitorResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -168,30 +183,30 @@ func (r *httpMonitorResource) Configure(ctx context.Context, req resource.Config
 
 func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
-	var plan, o_plan MonitorResourceModel
-	var item kuma.Monitor
+	var newTagPlan []kuma.MonitorTag
+	var plan MonitorResourceModel
+
+	tflog.Debug(ctx, "[INIT_PLAN]"+fmt.Sprintf("%+v", req.Plan))
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
 	tflog.Debug(ctx, "[INPUT_PLAN]"+fmt.Sprintf("%+v", plan))
 
-	err := ConvertStruct(plan, &item, false)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Convert Struct",
-			"Could not Convert terraform struct to api struct, unexpected error: "+err.Error(),
-		)
+	item, diags := plan.Convert()
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
 	tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", item))
-	// Create new order and set the ID on the state.
 
-	monitorID, err := r.client.CreateMonitor(item)
+	// Create new order and set the ID on the state.
+	monitorID, err := r.client.CreateMonitor(*item)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating monitor",
@@ -200,31 +215,39 @@ func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	monitor, err := r.client.GetMonitor(*monitorID)
+	var monitor *kuma.Monitor
+
+	for _, tag := range item.Tags {
+		if err = r.client.CreateMonitorTag(*monitorID, tag); err != nil {
+			resp.Diagnostics.AddError(
+				"Error Ceating Kuma Monitor Tag",
+				fmt.Sprintf("Could not ceate Kuma Monitor tag %s, tags: %+v %s", plan.Name.ValueString(), newTagPlan, err.Error()),
+			)
+			return
+		}
+	}
+
+	monitor, err = r.client.GetMonitor(*monitorID)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Reading Kuma Monitor",
-			fmt.Sprintf("Could not read Kuma Monitor %s, ID: %d %s", plan.Name.ValueString(), int(plan.ID.ValueInt64()), err.Error()),
+			"Error Reading Kuma Tag",
+			"Could not read Kuma Tag",
 		)
 		return
 	}
 
 	tflog.Debug(ctx, "[OUTPUT_ITEM]"+fmt.Sprintf("%+v", monitor))
 
-	err = ConvertStruct(*monitor, &o_plan, true)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Convert Struct",
-			"Could not Convert terraform struct to api struct, unexpected error: "+err.Error(),
-		)
+	diags = plan.ConvertFrom(*monitor)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
-	tflog.Debug(ctx, "[OUTPUT_PLAN]"+fmt.Sprintf("%+v", o_plan))
+	tflog.Debug(ctx, "[OUTPUT_PLAN]"+fmt.Sprintf("%+v", plan))
 
 	// Set state to fully populated data
-
-	diags = resp.State.Set(ctx, o_plan)
+	diags = resp.State.Set(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -232,7 +255,7 @@ func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateReq
 }
 
 func (r *httpMonitorResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state MonitorResourceModel
+	var state, outputPlan MonitorResourceModel
 	// Read Terraform prior state data into the model
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -240,7 +263,7 @@ func (r *httpMonitorResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	monitor, err := r.client.GetMonitor(int(state.ID.ValueInt64()))
+	monitor, err := r.client.GetMonitor(state.ID.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Kuma Tag",
@@ -249,12 +272,14 @@ func (r *httpMonitorResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	if err := ConvertStruct(*monitor, &state, true); err != nil {
+	diags = outputPlan.ConvertFrom(*monitor)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
 	// Set refreshed state
-	diags = resp.State.Set(ctx, &state)
+	diags = resp.State.Set(ctx, &outputPlan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -263,8 +288,7 @@ func (r *httpMonitorResource) Read(ctx context.Context, req resource.ReadRequest
 
 func (r *httpMonitorResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from plan
-	var plan, o_plan MonitorResourceModel
-	var item kuma.Monitor
+	var plan, outputPlan MonitorResourceModel
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -272,16 +296,13 @@ func (r *httpMonitorResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	if err := ConvertStruct(plan, &item, false); err != nil {
-		resp.Diagnostics.AddError(
-			"Error Convert Struct",
-			"Could not Convert terraform struct to api struct, unexpected error: "+err.Error(),
-		)
+	item, diags := plan.Convert()
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
-	err := r.client.UpdateMonitor(int(plan.ID.ValueInt64()), item)
-	if err != nil {
+	if err := r.client.UpdateMonitor(plan.ID.ValueInt64(), *item); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Kuma Monitor",
 			fmt.Sprintf("Could not update Kuma Monitor %s, ID: %d %s", plan.Name.ValueString(), int(plan.ID.ValueInt64()), err.Error()),
@@ -289,7 +310,61 @@ func (r *httpMonitorResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	monitor, err := r.client.GetMonitor(int(plan.ID.ValueInt64()))
+	monitor, err := r.client.GetMonitor(plan.ID.ValueInt64())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Kuma Monitor",
+			fmt.Sprintf("Could not read Kuma Monitor %s, ID: %d %s", plan.Name.ValueString(), int(plan.ID.ValueInt64()), err.Error()),
+		)
+		return
+	}
+
+	tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", plan))
+
+	for _, tag := range item.Tags {
+		if tag.TagId != 0 {
+			continue
+		}
+
+		state, err := r.client.GetTag(tag.Name)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Kuma Tag",
+				fmt.Sprintf("Could not read Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
+			)
+			return
+		}
+
+		for _, stateTag := range monitor.Tags {
+			if stateTag.Name == tag.Name {
+				tag.TagId = state.ID
+				tag.Value = stateTag.Value
+
+				if err := r.client.DeleteMonitorTag(item.ID, kuma.MonitorTag{
+					TagId: state.ID,
+					Value: stateTag.Value,
+				}); err != nil {
+					resp.Diagnostics.AddError(
+						"Error Updating Kuma Tag",
+						fmt.Sprintf("Could not Delete Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
+					)
+					return
+				}
+				break
+			}
+		}
+		tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", tag))
+
+		if err := r.client.CreateMonitorTag(item.ID, tag); err != nil {
+			resp.Diagnostics.AddError(
+				"Error Updating Kuma Tag",
+				fmt.Sprintf("Could not create Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
+			)
+			return
+		}
+	}
+
+	monitor, err = r.client.GetMonitor(plan.ID.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Kuma Monitor",
@@ -300,15 +375,13 @@ func (r *httpMonitorResource) Update(ctx context.Context, req resource.UpdateReq
 
 	tflog.Debug(ctx, "[OUTPUT_ITEM]"+fmt.Sprintf("%+v", monitor))
 
-	if err := ConvertStruct(*monitor, &o_plan, true); err != nil {
-		resp.Diagnostics.AddError(
-			"Error Convert Struct",
-			"Could not Convert api struct to terraform struct , unexpected error: "+err.Error(),
-		)
+	diags = outputPlan.ConvertFrom(*monitor)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
-	diags = resp.State.Set(ctx, o_plan)
+	diags = resp.State.Set(ctx, outputPlan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -324,7 +397,7 @@ func (r *httpMonitorResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 
 	// Delete existing order
-	err := r.client.DeleteMonitor(int(state.ID.ValueInt64()))
+	err := r.client.DeleteMonitor(state.ID.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Kuma Monitor",

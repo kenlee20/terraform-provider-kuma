@@ -66,7 +66,7 @@ func (d *NotificationsDataSource) Schema(_ context.Context, _ datasource.SchemaR
 func (d *NotificationsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var states Notifications
 
-	Notifications, err := d.client.GetNotifications()
+	notifications, err := d.client.GetNotifications()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read Notifications",
@@ -75,15 +75,10 @@ func (d *NotificationsDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	for _, tag := range Notifications {
+	for _, notification := range notifications {
 		var state Notification
-		if err := ConvertStruct(tag, &state, true); err != nil {
-			resp.Diagnostics.AddError(
-				"Unable to Convert Notification",
-				err.Error(),
-			)
-			return
-		}
+
+		state.ConvertFrom(notification)
 
 		states.Notifications = append(states.Notifications, state)
 	}

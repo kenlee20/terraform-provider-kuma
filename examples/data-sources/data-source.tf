@@ -1,1 +1,0 @@
-data "upkuapi_monitors" "all" {}

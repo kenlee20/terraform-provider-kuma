@@ -53,7 +53,6 @@ func (r *tagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 // Create creates the resource and sets the initial Terraform state.
 func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan Tag
-	var item kuma.Tag
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -61,13 +60,10 @@ func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	err := ConvertStruct(plan, &item, false)
-	if err != nil {
-		return
-	}
+	item := plan.Convert()
 
 	// Create new tag
-	tag, err := r.client.CreateTag(item)
+	tag, err := r.client.CreateTag(*item)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating tag",
@@ -77,10 +73,7 @@ func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	err = ConvertStruct(*tag, &plan, true)
-	if err != nil {
-		return
-	}
+	plan.ConvertFrom(*tag)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -123,8 +116,7 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, o_plan Tag
-	var item kuma.Tag
+	var plan, outputPlan Tag
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -132,16 +124,10 @@ func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	if err := ConvertStruct(plan, &item, false); err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to Convert tag struct from terraform",
-			err.Error(),
-		)
-		return
-	}
+	item := plan.Convert()
 
 	// Update existing tag
-	err := r.client.UpdateTag(int(plan.ID.ValueInt64()), item)
+	err := r.client.UpdateTag(plan.ID.ValueInt64(), *item)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating tag",
@@ -161,16 +147,10 @@ func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	// Overwrite items with refreshed state
-	if err := ConvertStruct(*updatedTag, &plan, true); err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to Convert tag struct to terraform",
-			err.Error(),
-		)
-		return
-	}
+	plan.ConvertFrom(*updatedTag)
 
 	// Set refreshed state
-	diags = resp.State.Set(ctx, o_plan)
+	diags = resp.State.Set(ctx, outputPlan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -187,7 +167,7 @@ func (r *tagResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	}
 
 	// Delete existing order
-	err := r.client.DeleteTag(int(state.ID.ValueInt64()))
+	err := r.client.DeleteTag(state.ID.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Kuma Tag",

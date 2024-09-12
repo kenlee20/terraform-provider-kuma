@@ -25,8 +25,8 @@ func (c *Client) GetNotifications() ([]Notification, error) {
 	return notifications.Notifications, nil
 }
 
-func (c *Client) GetNotification(id int) (*Notification, error) {
-	resp, err := c.doRequest("GET", fmt.Sprintf("/notifications/%s", strconv.Itoa(id)), nil)
+func (c *Client) GetNotification(id int64) (*Notification, error) {
+	resp, err := c.doRequest("GET", fmt.Sprintf("/notifications/%s", strconv.FormatInt(id, 10)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +40,8 @@ func (c *Client) GetNotification(id int) (*Notification, error) {
 	return &notification, nil
 }
 
-func (c *Client) GetDefaultNotifications() ([]int, error) {
-	var defaultNotifications []int
+func (c *Client) GetDefaultNotifications() ([]int64, error) {
+	var defaultNotifications []int64
 	notifications, err := c.GetNotifications()
 	if err != nil {
 		return nil, err

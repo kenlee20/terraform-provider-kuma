@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (c *Client) GetMonitors() ([]Monitor, error) {
@@ -25,8 +26,8 @@ func (c *Client) GetMonitors() ([]Monitor, error) {
 	return monitors.Monitors, nil
 }
 
-func (c *Client) GetMonitor(id int) (*Monitor, error) {
-	body, err := c.doRequest("GET", "/monitors/"+strconv.Itoa(id), nil)
+func (c *Client) GetMonitor(id int64) (*Monitor, error) {
+	body, err := c.doRequest("GET", "/monitors/"+strconv.FormatInt(id, 10), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +45,7 @@ func (c *Client) GetMonitor(id int) (*Monitor, error) {
 	return &monitor.Monitor, nil
 }
 
-func (c *Client) CreateMonitor(monitor Monitor) (*int, error) {
+func (c *Client) CreateMonitor(monitor Monitor) (*int64, error) {
 	defaultNotification, err := c.GetDefaultNotifications()
 	if err != nil {
 		return nil, err
@@ -65,7 +66,7 @@ func (c *Client) CreateMonitor(monitor Monitor) (*int, error) {
 
 	type _resp struct {
 		Msg       string `json:"msg"`
-		MonitorID int    `json:"monitorId"`
+		MonitorID int64  `json:"monitorId"`
 	}
 
 	resp := _resp{}
@@ -77,20 +78,83 @@ func (c *Client) CreateMonitor(monitor Monitor) (*int, error) {
 	return &resp.MonitorID, nil
 }
 
-func (c *Client) DeleteMonitor(id int) error {
-	_, err := c.doRequest("DELETE", "/monitors/"+strconv.Itoa(id), nil)
+func (c *Client) DeleteMonitor(id int64) error {
+	_, err := c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(id, 10), nil)
 	return err
 }
 
-func (c *Client) UpdateMonitor(monitorID int, monitor Monitor) error {
+func (c *Client) UpdateMonitor(monitorID int64, monitor Monitor) error {
 	rb, err := json.Marshal(monitor)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.doRequest("PATCH", "/monitors/"+strconv.Itoa(monitorID), strings.NewReader(string(rb)))
+	_, err = c.doRequest("PATCH", "/monitors/"+strconv.FormatInt(monitorID, 10), strings.NewReader(string(rb)))
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) (err error) {
+	tagSetup := make(map[string]any)
+	count := 0
+
+	tag, err := c.GetTag(tagSet.Name)
+	if err != nil {
+		return err
+	}
+
+	tagSetup["tag_id"] = tag.ID
+	tagSetup["value"] = tagSet.Value
+
+	rb, err := json.Marshal(tagSetup)
+	if err != nil {
+		return err
+	}
+
+	for {
+		if count > 5 {
+			return err
+		}
+
+		_, err = c.doRequest("POST", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag", strings.NewReader(string(rb)))
+		if err != nil {
+			time.Sleep(c.Interval)
+			count++
+			continue
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
+func (c *Client) DeleteMonitorTag(monitorID int64, tagSet MonitorTag) (err error) {
+	count := 0
+
+	tagSetup := make(map[string]any)
+
+	tagSetup["tag_id"] = tagSet.TagId
+	tagSetup["value"] = tagSet.Value
+
+	tag, err := json.Marshal(tagSetup)
+	if err != nil {
+		return err
+	}
+
+	for {
+		if count > 5 {
+			return err
+		}
+		_, err = c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag/", strings.NewReader(string(tag)))
+		if err != nil {
+			time.Sleep(c.Interval)
+			count++
+			continue
+		} else {
+			break
+		}
 	}
 	return nil
 }

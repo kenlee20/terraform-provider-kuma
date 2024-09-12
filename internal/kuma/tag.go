@@ -64,8 +64,8 @@ func (c *Client) CreateTag(tag Tag) (*Tag, error) {
 	return &newTag, nil
 }
 
-func (c *Client) DeleteTag(tagId int) error {
-	uri := fmt.Sprintf("/tags/%s", strconv.Itoa(tagId))
+func (c *Client) DeleteTag(tagId int64) error {
+	uri := fmt.Sprintf("/tags/%s", strconv.FormatInt(tagId, 10))
 	_, err := c.doRequest("DELETE", uri, nil)
 	if err != nil {
 		return err
@@ -74,13 +74,13 @@ func (c *Client) DeleteTag(tagId int) error {
 	return nil
 }
 
-func (c *Client) UpdateTag(tagId int, tagInfo Tag) error {
+func (c *Client) UpdateTag(tagId int64, tagInfo Tag) error {
 	rb, err := json.Marshal(tagInfo)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.doRequest("PATCH", fmt.Sprintf("/tags/%s", strconv.Itoa(tagId)), strings.NewReader(string(rb)))
+	_, err = c.doRequest("PATCH", fmt.Sprintf("/tags/%s", strconv.FormatInt(tagId, 10)), strings.NewReader(string(rb)))
 
 	return err
 }

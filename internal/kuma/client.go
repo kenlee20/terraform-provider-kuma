@@ -24,8 +24,10 @@ func NewClient(host, username, password *string) (*Client, error) {
 	clearHost := strings.TrimRight(*host, "/")
 
 	c := Client{
-		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+		HTTPClient: &http.Client{Timeout: 300 * time.Second},
 		HostURL:    clearHost,
+		Retry:      5,
+		Interval:   2 * time.Second,
 	}
 
 	if username == nil || password == nil {

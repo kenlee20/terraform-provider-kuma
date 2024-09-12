@@ -1,0 +1,4 @@
+.vscode/**
+**/terraform.tfstate**
+**/.terraform
+**/trace.txt
