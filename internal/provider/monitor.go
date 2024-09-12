@@ -15,7 +15,6 @@ type MonitorResourceModel struct {
 	Description types.String `tfsdk:"description"`
 	PathName    types.String `tfsdk:"path_name"`
 	Url         types.String `tfsdk:"url"`
-	Method      types.String `tfsdk:"method"`
 	Type        types.String `tfsdk:"type"`
 	// Active      types.Bool   `tfsdk:"active"`
 	// Timeout        types.Int64 `tfsdk:"timeout"`
@@ -24,6 +23,11 @@ type MonitorResourceModel struct {
 	ResendInterval types.Int64 `tfsdk:"resend_interval"`
 	MaxRetries     types.Int64 `tfsdk:"max_retries"`
 	MaxRedirects   types.Int64 `tfsdk:"max_redirects"`
+
+	Method           types.String `tfsdk:"http_option_method"`
+	HTTPBodyEncoding types.String `tfsdk:"http_option_body_encoding"`
+	Body             types.String `tfsdk:"http_option_body"`
+	Headers          types.String `tfsdk:"http_option_headers"`
 
 	AcceptedStatusCodes types.List   `tfsdk:"accepted_statuscodes"`
 	NotificationIDList  types.List   `tfsdk:"notification_list"`
@@ -69,6 +73,9 @@ func (m *MonitorResourceModel) Convert() (*kuma.Monitor, diag.Diagnostics) {
 		PathName:            m.PathName.ValueString(),
 		Url:                 m.Url.ValueString(),
 		Method:              m.Method.ValueString(),
+		HTTPBodyEncoding:    m.HTTPBodyEncoding.ValueString(),
+		Body:                m.Body.ValueString(),
+		Headers:             m.Headers.ValueString(),
 		Type:                m.Type.ValueString(),
 		Interval:            m.Interval.ValueInt64(),
 		RetryInterval:       m.RetryInterval.ValueInt64(),
@@ -94,6 +101,9 @@ func (m *MonitorResourceModel) ConvertFrom(stu kuma.Monitor) (err diag.Diagnosti
 	m.PathName = types.StringValue(stu.PathName)
 	m.Url = types.StringValue(stu.Url)
 	m.Method = types.StringValue(stu.Method)
+	m.HTTPBodyEncoding = types.StringValue(stu.HTTPBodyEncoding)
+	m.Body = types.StringValue(stu.Body)
+	m.Headers = types.StringValue(stu.Headers)
 	m.Type = types.StringValue(stu.Type)
 	m.Interval = types.Int64Value(stu.Interval)
 	m.RetryInterval = types.Int64Value(stu.RetryInterval)

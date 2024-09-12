@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"terraform-provider-upkuapi/internal/kuma"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -16,8 +17,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -71,12 +74,6 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				Required:            true,
 				MarkdownDescription: "Options for monitoring url.",
 			},
-			"method": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				MarkdownDescription: "Options for http monitor method. default to `GET`.",
-				Default:             stringdefault.StaticString("GET"),
-			},
 			"interval": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
@@ -107,11 +104,42 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Options for maximum number of redirects to follow. Set to 0 to disable redirects. defaults to `10`",
 				Default:             int64default.StaticInt64(10),
 			},
+			"http_option_method": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Options for http monitor method. default to `GET`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"),
+				},
+				Default: stringdefault.StaticString("GET"),
+			},
+			"http_option_body_encoding": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Options for body encoding. default to `none`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("json", "xml"),
+				},
+				Default: stringdefault.StaticString("json"),
+			},
+			"http_option_body": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Options for body content. default to `none`.",
+			},
+			"http_option_headers": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Options for http headers.",
+			},
 			"notification_list": schema.ListAttribute{
 				Optional:            true,
 				Computed:            true,
 				MarkdownDescription: "Options for notification id list, automatically enable default notifications.",
 				ElementType:         types.Int64Type,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplaceIfConfigured(),
+				},
 			},
 			"accepted_statuscodes": schema.ListAttribute{
 				Optional:            true,
@@ -183,7 +211,6 @@ func (r *httpMonitorResource) Configure(ctx context.Context, req resource.Config
 
 func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
-	var newTagPlan []kuma.MonitorTag
 	var plan MonitorResourceModel
 
 	tflog.Debug(ctx, "[INIT_PLAN]"+fmt.Sprintf("%+v", req.Plan))
@@ -221,7 +248,7 @@ func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateReq
 		if err = r.client.CreateMonitorTag(*monitorID, tag); err != nil {
 			resp.Diagnostics.AddError(
 				"Error Ceating Kuma Monitor Tag",
-				fmt.Sprintf("Could not ceate Kuma Monitor tag %s, tags: %+v %s", plan.Name.ValueString(), newTagPlan, err.Error()),
+				fmt.Sprintf("Could not ceate Kuma Monitor tag %s, tags: %+v %s", plan.Name.ValueString(), tag, err.Error()),
 			)
 			return
 		}
@@ -318,51 +345,87 @@ func (r *httpMonitorResource) Update(ctx context.Context, req resource.UpdateReq
 		)
 		return
 	}
+	tflog.Debug(ctx, "[INPUT_PLAN]"+fmt.Sprintf("%+v", plan))
+	tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", monitor))
 
-	tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", plan))
+	curTag := make(map[string]kuma.MonitorTag)
+	planTag := make(map[string]kuma.MonitorTag)
 
+	for _, tag := range monitor.Tags {
+		curTag[tag.Name] = tag
+	}
 	for _, tag := range item.Tags {
-		if tag.TagId != 0 {
-			continue
-		}
+		planTag[tag.Name] = tag
+	}
 
-		state, err := r.client.GetTag(tag.Name)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Error Reading Kuma Tag",
-				fmt.Sprintf("Could not read Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
-			)
-			return
-		}
-
-		for _, stateTag := range monitor.Tags {
-			if stateTag.Name == tag.Name {
-				tag.TagId = state.ID
-				tag.Value = stateTag.Value
-
-				if err := r.client.DeleteMonitorTag(item.ID, kuma.MonitorTag{
-					TagId: state.ID,
-					Value: stateTag.Value,
-				}); err != nil {
-					resp.Diagnostics.AddError(
-						"Error Updating Kuma Tag",
-						fmt.Sprintf("Could not Delete Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
-					)
-					return
-				}
-				break
+	for name, tag := range curTag {
+		// check current tag isn't in plan tag
+		if _, ok := planTag[name]; !ok {
+			if err := r.client.DeleteMonitorTag(plan.ID.ValueInt64(), tag); err != nil {
+				resp.Diagnostics.AddError(
+					"Error Updating Kuma Tag",
+					fmt.Sprintf("Could not Delete Kuma Tag %s, ID: %d %s", name, tag.TagId, err.Error()),
+				)
+				return
+			}
+		} else if ok && planTag[name].Value == tag.Value {
+			// delete unchange tag
+			delete(planTag, name)
+		} else if ok && planTag[name].Value != tag.Value {
+			// update changed tag
+			if err := r.client.DeleteMonitorTag(plan.ID.ValueInt64(), tag); err != nil {
+				resp.Diagnostics.AddError(
+					"Error Updating Kuma Tag",
+					fmt.Sprintf("Could not Delete Kuma Tag %s, ID: %d %s", name, tag.TagId, err.Error()),
+				)
+				return
 			}
 		}
-		tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", tag))
+	}
 
-		if err := r.client.CreateMonitorTag(item.ID, tag); err != nil {
+	for tag := range planTag {
+		if err := r.client.CreateMonitorTag(plan.ID.ValueInt64(), planTag[tag]); err != nil {
 			resp.Diagnostics.AddError(
 				"Error Updating Kuma Tag",
-				fmt.Sprintf("Could not create Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
+				fmt.Sprintf("Could not create Kuma Tag %s, ID: %d %s", tag, planTag[tag].TagId, err.Error()),
 			)
 			return
 		}
 	}
+
+	// for _, tag := range item.Tags {
+	// 	if tag.TagId != 0 {
+	// 		continue
+	// 	}
+
+	// 	for _, stateTag := range monitor.Tags {
+	// 		if stateTag.Name == tag.Name {
+	// 			tag.TagId = state.ID
+	// 			tag.Value = stateTag.Value
+
+	// 			if err := r.client.DeleteMonitorTag(item.ID, kuma.MonitorTag{
+	// 				TagId: state.ID,
+	// 				Value: stateTag.Value,
+	// 			}); err != nil {
+	// 				resp.Diagnostics.AddError(
+	// 					"Error Updating Kuma Tag",
+	// 					fmt.Sprintf("Could not Delete Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
+	// 				)
+	// 				return
+	// 			}
+	// 			break
+	// 		}
+	// 	}
+	// 	tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", tag))
+
+	// 	if err := r.client.CreateMonitorTag(item.ID, tag); err != nil {
+	// 		resp.Diagnostics.AddError(
+	// 			"Error Updating Kuma Tag",
+	// 			fmt.Sprintf("Could not create Kuma Tag %s, ID: %d %s", tag.Name, tag.TagId, err.Error()),
+	// 		)
+	// 		return
+	// 	}
+	// }
 
 	monitor, err = r.client.GetMonitor(plan.ID.ValueInt64())
 	if err != nil {

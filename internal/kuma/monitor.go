@@ -2,12 +2,13 @@ package kuma
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 )
 
 func (c *Client) GetMonitors() ([]Monitor, error) {
-	body, err := c.doRequest("GET", "/monitors", nil)
+	body, _, err := c.doRequest("GET", "/monitors", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +27,7 @@ func (c *Client) GetMonitors() ([]Monitor, error) {
 }
 
 func (c *Client) GetMonitor(id int64) (*Monitor, error) {
-	body, err := c.doRequest("GET", "/monitors/"+strconv.FormatInt(id, 10), nil)
+	body, _, err := c.doRequest("GET", "/monitors/"+strconv.FormatInt(id, 10), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (c *Client) CreateMonitor(monitor Monitor) (*int64, error) {
 		return nil, err
 	}
 
-	body, err := c.doRequest("POST", "/monitors", strings.NewReader(string(rb)))
+	body, _, err := c.doRequest("POST", "/monitors", strings.NewReader(string(rb)))
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ func (c *Client) CreateMonitor(monitor Monitor) (*int64, error) {
 }
 
 func (c *Client) DeleteMonitor(id int64) error {
-	_, err := c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(id, 10), nil)
+	_, _, err := c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(id, 10), nil)
 	return err
 }
 
@@ -88,14 +89,14 @@ func (c *Client) UpdateMonitor(monitorID int64, monitor Monitor) error {
 		return err
 	}
 
-	_, err = c.doRequest("PATCH", "/monitors/"+strconv.FormatInt(monitorID, 10), strings.NewReader(string(rb)))
+	_, _, err = c.doRequest("PATCH", "/monitors/"+strconv.FormatInt(monitorID, 10), strings.NewReader(string(rb)))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) (err error) {
+func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) error {
 	tagSetup := make(map[string]any)
 
 	tag, err := c.GetTag(tagSet.Name)
@@ -111,9 +112,28 @@ func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) (err error
 		return err
 	}
 
-	_, err = c.doRequest("POST", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag", strings.NewReader(string(rb)))
+	for i := 0; ; i++ {
+		_, statusCode, err := c.doRequest("POST", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag", strings.NewReader(string(rb)))
+		if *statusCode == 200 {
+			return nil
+		}
 
-	return err
+		monitor, getErr := c.GetMonitor(monitorID)
+		if getErr != nil {
+			return getErr
+		}
+
+		// Check if the tag already exists
+		for _, tag := range monitor.Tags {
+			if tag.Name == tagSet.Name {
+				return nil
+			}
+		}
+
+		if i == int(c.Retry) {
+			return fmt.Errorf("failed to create tag after %d retries", err)
+		}
+	}
 }
 
 func (c *Client) DeleteMonitorTag(monitorID int64, tagSet MonitorTag) (err error) {
@@ -127,7 +147,7 @@ func (c *Client) DeleteMonitorTag(monitorID int64, tagSet MonitorTag) (err error
 		return err
 	}
 
-	_, err = c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag/", strings.NewReader(string(tag)))
+	_, _, err = c.doRequest("DELETE", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag/", strings.NewReader(string(tag)))
 
 	return err
 }

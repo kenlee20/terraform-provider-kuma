@@ -13,7 +13,7 @@ func (c *Client) SignIn() (*AuthResponse, error) {
 
 	readerBody := strings.NewReader(fmt.Sprintf("username=%s&password=%s", c.Auth.Username, c.Auth.Password))
 
-	body, err := c.doRequest("POST", "/login/access-token/", readerBody, withContentType("application/x-www-form-urlencoded"))
+	body, _, err := c.doRequest("POST", "/login/access-token/", readerBody, withContentType("application/x-www-form-urlencoded"))
 	if err != nil {
 		return nil, err
 	}

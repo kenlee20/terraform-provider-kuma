@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/spf13/viper"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -32,6 +33,12 @@ type kumaProviderModel struct {
 	Host     types.String `tfsdk:"host"`
 	Username types.String `tfsdk:"username"`
 	Password types.String `tfsdk:"password"`
+}
+
+type KumaConfiguration struct {
+	Host     string
+	Username string
+	Password string
 }
 
 // Uptime KumaProvider is the provider implementation.
@@ -81,35 +88,35 @@ func (p *kumaProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	// If practitioner provided a configuration value for any of the
-	// attributes, it must be a known value.
+	var c struct {
+		Host     string
+		Username string
+		Password string
+	}
 
-	if config.Host.IsUnknown() {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("$HOME/.config/kuma/")
+
+	if err := viper.ReadInConfig(); err != nil {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("host"),
+			path.Root(""),
 			"Unknown Uptime Kuma API Host",
-			"The provider cannot create the Uptime Kuma API client as there is an unknown configuration value for the Uptime Kuma API host. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the Uptime Kuma_HOST environment variable.",
+			"The provdier can read config file from home path. "+err.Error(),
 		)
 	}
 
-	if config.Username.IsUnknown() {
+	if err := viper.Unmarshal(&c); err != nil {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("username"),
-			"Unknown Uptime Kuma API Username",
-			"The provider cannot create the Uptime Kuma API client as there is an unknown configuration value for the Uptime Kuma API username. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the Uptime Kuma_USERNAME environment variable.",
+			path.Root(""),
+			"Unknown Uptime Kuma API Host",
+			"The provdier can marshal config file from home path. "+err.Error(),
 		)
 	}
 
-	if config.Password.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("password"),
-			"Unknown Uptime Kuma API Password",
-			"The provider cannot create the Uptime Kuma API client as there is an unknown configuration value for the Uptime Kuma API password. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the Uptime Kuma_PASSWORD environment variable.",
-		)
-	}
+	host := os.Getenv("KUMA_API_HOST")
+	username := os.Getenv("KUMA_API_USERNAME")
+	password := os.Getenv("KUMA_API_PASSWORD")
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -118,20 +125,22 @@ func (p *kumaProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	// Default values to environment variables, but override
 	// with Terraform configuration value if set.
 
-	host := os.Getenv("KUMA_API_HOST")
-	username := os.Getenv("KUMA_API_USERNAME")
-	password := os.Getenv("KUMA_API_PASSWORD")
-
 	if !config.Host.IsNull() {
 		host = config.Host.ValueString()
+	} else if host == "" {
+		host = c.Host
 	}
 
 	if !config.Username.IsNull() {
 		username = config.Username.ValueString()
+	} else if username == "" {
+		username = c.Username
 	}
 
 	if !config.Password.IsNull() {
 		password = config.Password.ValueString()
+	} else if password == "" {
+		password = c.Password
 	}
 
 	// If any of the expected configurations are missing, return
@@ -142,7 +151,7 @@ func (p *kumaProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 			path.Root("host"),
 			"Missing Uptime Kuma API Host",
 			"The provider cannot create the Uptime Kuma API client as there is a missing or empty value for the Uptime Kuma API host. "+
-				"Set the host value in the configuration or use the Uptime Kuma_HOST environment variable. "+
+				"Set the host value in the configuration or use the Uptime KUMA_API_HOST environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -152,7 +161,7 @@ func (p *kumaProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 			path.Root("username"),
 			"Missing Uptime Kuma API Username",
 			"The provider cannot create the Uptime Kuma API client as there is a missing or empty value for the Uptime Kuma API username. "+
-				"Set the username value in the configuration or use the Uptime Kuma_USERNAME environment variable. "+
+				"Set the username value in the configuration or use the Uptime KUMA_API_USERNAME environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -162,7 +171,7 @@ func (p *kumaProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 			path.Root("password"),
 			"Missing Uptime Kuma API Password",
 			"The provider cannot create the Uptime Kuma API client as there is a missing or empty value for the Uptime Kuma API password. "+
-				"Set the password value in the configuration or use the Uptime Kuma_PASSWORD environment variable. "+
+				"Set the password value in the configuration or use the Uptime KUMA_API_PASSWORD environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}

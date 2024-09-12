@@ -1,4 +1,4 @@
-resource "upkuapi_monitor" "example" {
+resource "upkuapi_http_monitor" "example" {
   name        = "example"
   description = "example monitor"
   url         = "https://example.com"

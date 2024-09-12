@@ -7,7 +7,7 @@ import (
 )
 
 func (c *Client) GetNotifications() ([]Notification, error) {
-	resp, err := c.doRequest("GET", "/notifications", nil)
+	resp, _, err := c.doRequest("GET", "/notifications", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func (c *Client) GetNotifications() ([]Notification, error) {
 }
 
 func (c *Client) GetNotification(id int64) (*Notification, error) {
-	resp, err := c.doRequest("GET", fmt.Sprintf("/notifications/%s", strconv.FormatInt(id, 10)), nil)
+	resp, _, err := c.doRequest("GET", fmt.Sprintf("/notifications/%s", strconv.FormatInt(id, 10)), nil)
 	if err != nil {
 		return nil, err
 	}

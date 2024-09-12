@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) GetTags() ([]Tag, error) {
-	body, err := c.doRequest("GET", "/tags", nil)
+	body, _, err := c.doRequest("GET", "/tags", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (c *Client) CreateTag(tag Tag) (*Tag, error) {
 		return nil, err
 	}
 
-	body, err := c.doRequest("POST", "/tags", strings.NewReader(string(rb)))
+	body, _, err := c.doRequest("POST", "/tags", strings.NewReader(string(rb)))
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (c *Client) CreateTag(tag Tag) (*Tag, error) {
 
 func (c *Client) DeleteTag(tagId int64) error {
 	uri := fmt.Sprintf("/tags/%s", strconv.FormatInt(tagId, 10))
-	_, err := c.doRequest("DELETE", uri, nil)
+	_, _, err := c.doRequest("DELETE", uri, nil)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (c *Client) UpdateTag(tagId int64, tagInfo Tag) error {
 		return err
 	}
 
-	_, err = c.doRequest("PATCH", fmt.Sprintf("/tags/%s", strconv.FormatInt(tagId, 10)), strings.NewReader(string(rb)))
+	_, _, err = c.doRequest("PATCH", fmt.Sprintf("/tags/%s", strconv.FormatInt(tagId, 10)), strings.NewReader(string(rb)))
 
 	return err
 }

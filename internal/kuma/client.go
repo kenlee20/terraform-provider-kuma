@@ -3,7 +3,6 @@ package kuma
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -50,7 +49,7 @@ func NewClient(host, username, password *string) (*Client, error) {
 	return &c, nil
 }
 
-func (c *Client) doRequest(method string, uri string, rb io.Reader, opts ...requestOption) ([]byte, error) {
+func (c *Client) doRequest(method string, uri string, rb io.Reader, opts ...requestOption) ([]byte, *int, error) {
 	token := c.Token
 	clearUri := strings.TrimLeft(uri, "/")
 
@@ -65,37 +64,24 @@ func (c *Client) doRequest(method string, uri string, rb io.Reader, opts ...requ
 
 	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", c.HostURL, clearUri), rb)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	req.Header.Add("Content-Type", options.ContentType)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	for i := 0; i < int(c.Retry); i++ {
-
-		res, err := c.HTTPClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode == 200 {
-			body, err := io.ReadAll(res.Body)
-			if res.StatusCode != http.StatusOK {
-				error_messgae := fmt.Sprintf("method %s API %s", method, clearUri)
-				return nil, fmt.Errorf("status: %d, message: %s, body: %s", res.StatusCode, error_messgae, body)
-			}
-
-			if err != nil {
-				return nil, err
-			}
-
-			return body, nil
-		}
-
-		log.Printf("Request failed (attempt %d/%d): %v", i+1, int(c.Retry), err)
-		time.Sleep(c.Interval)
+	res, err := c.HTTPClient.Do(req)
+	if res.StatusCode != http.StatusOK {
+		error_messgae := fmt.Sprintf("method %s API %s: %v", method, clearUri, err)
+		return nil, &res.StatusCode, fmt.Errorf("status: %d, message: %s, body: %s", res.StatusCode, error_messgae, res.Body)
 	}
 
-	return nil, fmt.Errorf("request failed after %d attempts err:%v", c.Retry, err)
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, &res.StatusCode, err
+	}
+
+	return body, &res.StatusCode, nil
 }
