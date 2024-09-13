@@ -13,7 +13,7 @@ Provides an Moniotr resource. This allows monitors to be created, updated, and d
 ## Example Usage
 
 ```terraform
-resource "upkuapi_monitor" "example" {
+resource "upkuapi_http_monitor" "example" {
   name        = "example"
   description = "example monitor"
   url         = "https://example.com"
@@ -24,16 +24,10 @@ resource "upkuapi_monitor" "example" {
 
   accepted_statuscodes = ["200-299", "300-399"]
   notification_list    = [1, 2, 3]
-  tags = [
-    {
-      name  = "key1"
-      value = "value1"
-    },
-    {
-      name  = "key2"
-      value = "value2"
-    }
-  ]
+  tags = {
+    "env"      = "prod"
+    "createBy" = "demo"
+  }
 }
 ```
 
@@ -50,15 +44,18 @@ resource "upkuapi_monitor" "example" {
 - `accepted_statuscodes` (List of String) Options for Accepted Status Codes. Select status codes which are considered as a successful response., defaults to `["200-299"]`
 - `description` (String) Describes the monitor.
 - `expiry_notification` (Boolean) Options for Certificate Expiry Notification. defaults to `true`.
+- `http_option_body` (String) Options for body content. default to `none`.
+- `http_option_body_encoding` (String) Options for body encoding. default to `none`.
+- `http_option_headers` (String) Options for http headers.
+- `http_option_method` (String) Options for http monitor method. default to `GET`.
 - `ignore_tls` (Boolean) Options for ignore TLS/SSL error for HTTPS websites, defaults to `false`.
 - `interval` (Number) Options for heartbeat Interval. default to `60`.
 - `max_redirects` (Number) Options for maximum number of redirects to follow. Set to 0 to disable redirects. defaults to `10`
 - `max_retries` (Number) Options for maximum retries before the service is marked as down and a notification is sent. default to `5`.
-- `method` (String) Options for http monitor method. default to `GET`.
 - `notification_list` (List of Number) Options for notification id list, automatically enable default notifications.
 - `resend_interval` (Number) Options for resend every times. defaults to `0`
 - `retry_interval` (Number) Options for Retry every secend. default to `20`.
-- `tags` (Attributes Set) Options for monitor tag (see [below for nested schema](#nestedatt--tags))
+- `tags` (Map of String) Options for monitor tag
 - `upside_down` (Boolean) Options for Upside Down Mode. Flip the status upside down. If the service is reachable, it is DOWN. defaults to `false`
 
 ### Read-Only
@@ -66,18 +63,6 @@ resource "upkuapi_monitor" "example" {
 - `id` (Number) The ID of this resource.
 - `path_name` (String)
 - `type` (String)
-
-<a id="nestedatt--tags"></a>
-### Nested Schema for `tags`
-
-Required:
-
-- `name` (String) Options for name of tag.
-- `value` (String) Options for value of tag.
-
-Read-Only:
-
-- `tag_id` (Number)
 
 ## Import
 

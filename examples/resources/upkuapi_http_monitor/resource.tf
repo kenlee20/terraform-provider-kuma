@@ -9,14 +9,8 @@ resource "upkuapi_http_monitor" "example" {
 
   accepted_statuscodes = ["200-299", "300-399"]
   notification_list    = [1, 2, 3]
-  tags = [
-    {
-      name  = "key1"
-      value = "value1"
-    },
-    {
-      name  = "key2"
-      value = "value2"
-    }
-  ]
+  tags = {
+    "env"      = "prod"
+    "createBy" = "demo"
+  }
 }

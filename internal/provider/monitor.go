@@ -29,12 +29,12 @@ type MonitorResourceModel struct {
 	Body             types.String `tfsdk:"http_option_body"`
 	Headers          types.String `tfsdk:"http_option_headers"`
 
-	AcceptedStatusCodes types.List   `tfsdk:"accepted_statuscodes"`
-	NotificationIDList  types.List   `tfsdk:"notification_list"`
-	ExpiryNotification  types.Bool   `tfsdk:"expiry_notification"`
-	IgnoreTls           types.Bool   `tfsdk:"ignore_tls"`
-	UpsideDown          types.Bool   `tfsdk:"upside_down"`
-	Tags                []MonitorTag `tfsdk:"tags"`
+	AcceptedStatusCodes types.List `tfsdk:"accepted_statuscodes"`
+	NotificationIDList  types.List `tfsdk:"notification_list"`
+	ExpiryNotification  types.Bool `tfsdk:"expiry_notification"`
+	IgnoreTls           types.Bool `tfsdk:"ignore_tls"`
+	UpsideDown          types.Bool `tfsdk:"upside_down"`
+	Tags                types.Map  `tfsdk:"tags"`
 }
 
 type MonitorTag struct {
@@ -45,19 +45,24 @@ type MonitorTag struct {
 
 func (m *MonitorResourceModel) Convert() (*kuma.Monitor, diag.Diagnostics) {
 	ctx := context.Background()
+	var tmpTag map[string]string
 	var newTag []kuma.MonitorTag
 	var newAcceptedStatusCodes []string
 	var newNotificationIDList []int64
 
-	for _, tag := range m.Tags {
+	err := m.Tags.ElementsAs(ctx, &tmpTag, true)
+	if err.HasError() {
+		return nil, err
+	}
+
+	for key, value := range tmpTag {
 		newTag = append(newTag, kuma.MonitorTag{
-			TagId: tag.TagId.ValueInt64(),
-			Name:  tag.Name.ValueString(),
-			Value: tag.Value.ValueString(),
+			Name:  key,
+			Value: value,
 		})
 	}
 
-	err := m.AcceptedStatusCodes.ElementsAs(ctx, &newAcceptedStatusCodes, true)
+	err = m.AcceptedStatusCodes.ElementsAs(ctx, &newAcceptedStatusCodes, true)
 	if err.HasError() {
 		return nil, err
 	}
@@ -93,7 +98,6 @@ func (m *MonitorResourceModel) Convert() (*kuma.Monitor, diag.Diagnostics) {
 
 func (m *MonitorResourceModel) ConvertFrom(stu kuma.Monitor) (err diag.Diagnostics) {
 	ctx := context.Background()
-	var newTag []MonitorTag
 
 	m.ID = types.Int64Value(stu.ID)
 	m.Name = types.StringValue(stu.Name)
@@ -124,14 +128,12 @@ func (m *MonitorResourceModel) ConvertFrom(stu kuma.Monitor) (err diag.Diagnosti
 		return err
 	}
 
+	newTag := make(map[string]string)
 	for _, tag := range stu.Tags {
-		newTag = append(newTag, MonitorTag{
-			TagId: types.Int64Value(tag.TagId),
-			Name:  types.StringValue(tag.Name),
-			Value: types.StringValue(tag.Value),
-		})
+		newTag[tag.Name] = tag.Value
 	}
-	m.Tags = newTag
 
-	return nil
+	m.Tags, err = types.MapValueFrom(ctx, types.StringType, newTag)
+
+	return err
 }

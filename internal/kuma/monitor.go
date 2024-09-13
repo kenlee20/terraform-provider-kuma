@@ -139,7 +139,12 @@ func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) error {
 func (c *Client) DeleteMonitorTag(monitorID int64, tagSet MonitorTag) (err error) {
 	tagSetup := make(map[string]any)
 
-	tagSetup["tag_id"] = tagSet.TagId
+	curTag, err := c.GetTag(tagSet.Name)
+	if err != nil {
+		return err
+	}
+
+	tagSetup["tag_id"] = curTag.ID
 	tagSetup["value"] = tagSet.Value
 
 	tag, err := json.Marshal(tagSetup)

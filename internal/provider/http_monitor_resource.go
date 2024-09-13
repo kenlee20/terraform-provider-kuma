@@ -168,25 +168,11 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Options for Upside Down Mode. Flip the status upside down. If the service is reachable, it is DOWN. defaults to `false`",
 				Default:             booldefault.StaticBool(false),
 			},
-			"tags": schema.SetNestedAttribute{
+			"tags": schema.MapAttribute{
+				ElementType:         types.StringType,
 				MarkdownDescription: "Options for monitor tag",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							Required:            true,
-							MarkdownDescription: "Options for name of tag.",
-						},
-						"value": schema.StringAttribute{
-							Required:            true,
-							MarkdownDescription: "Options for value of tag.",
-						},
-						"tag_id": schema.Int64Attribute{
-							Computed: true,
-						},
-					},
-				},
-				Optional: true,
-				Computed: true,
+				Optional:            true,
+				Computed:            true,
 			},
 		},
 	}

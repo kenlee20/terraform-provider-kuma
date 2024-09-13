@@ -1,57 +1,19 @@
 package provider
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"terraform-provider-upkuapi/internal/kuma"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestMonitorConvert(t *testing.T) {
-	providerPlan := MonitorResourceModel{
-		ID:                  types.Int64Value(1),
-		Name:                types.StringValue("name"),
-		Description:         types.StringValue("description test"),
-		PathName:            types.StringValue("name"),
-		Url:                 types.StringValue("https://example.com"),
-		Method:              types.StringValue("GET"),
-		Type:                types.StringValue("http"),
-		Interval:            types.Int64Value(1),
-		MaxRedirects:        types.Int64Value(1),
-		RetryInterval:       types.Int64Value(1),
-		ResendInterval:      types.Int64Value(1),
-		MaxRetries:          types.Int64Value(1),
-		ExpiryNotification:  types.BoolValue(true),
-		UpsideDown:          types.BoolValue(true),
-		IgnoreTls:           types.BoolValue(true),
-		AcceptedStatusCodes: types.ListValueMust(types.StringType, []attr.Value{types.StringValue("200")}),
-		NotificationIDList:  types.ListValueMust(types.Int64Type, []attr.Value{types.Int64Value(5)}),
-		Tags: []MonitorTag{
-			{
-				TagId: types.Int64Value(5),
-				Name:  types.StringValue("tag_name"),
-				Value: types.StringValue("tag_value"),
-			},
-		},
-	}
-
-	plan, err := providerPlan.Convert()
-	if err.HasError() {
-		t.Fatal(err)
-	}
-
-	t.Logf("\n%+v\n", plan)
-	if len(plan.AcceptedStatusCodes) == 0 || len(plan.NotificationIDList) == 0 {
-		t.Fatal("failed to convert")
-	}
-	if len(plan.Tags) == 0 {
-		t.Fatal("failed to convert")
-	}
-}
-
-func TestMonitorConvertFrom(t *testing.T) {
-	var providerPlan MonitorResourceModel
+func setupTest() (*kuma.Monitor, *MonitorResourceModel, diag.Diagnostics) {
+	ctx := context.Background()
 
 	plan := kuma.Monitor{
 		ID:                  1,
@@ -80,18 +42,62 @@ func TestMonitorConvertFrom(t *testing.T) {
 		},
 	}
 
-	err := providerPlan.ConvertFrom(plan)
-	if err.HasError() {
-		t.Fatal(err)
+	mapTag := make(map[string]string)
+	for _, tag := range plan.Tags {
+		mapTag[tag.Name] = tag.Value
 	}
 
-	if len(providerPlan.Tags) == 0 {
-		t.Fatal("failed to convert")
+	providerTag, err := types.MapValueFrom(ctx, types.StringType, mapTag)
+	if err != nil {
+		return nil, nil, err
 	}
-	if len(providerPlan.AcceptedStatusCodes.Elements()) == 0 {
-		t.Fatal("failed to convert")
+
+	providerPlan := MonitorResourceModel{
+		ID:                  types.Int64Value(plan.ID),
+		Name:                types.StringValue(plan.Name),
+		Description:         types.StringValue(plan.PathName),
+		PathName:            types.StringValue(plan.PathName),
+		Url:                 types.StringValue(plan.Url),
+		Method:              types.StringValue(plan.Method),
+		Type:                types.StringValue(plan.Type),
+		Interval:            types.Int64Value(plan.Interval),
+		MaxRedirects:        types.Int64Value(plan.MaxRedirects),
+		RetryInterval:       types.Int64Value(plan.RetryInterval),
+		ResendInterval:      types.Int64Value(plan.ResendInterval),
+		MaxRetries:          types.Int64Value(plan.MaxRedirects),
+		ExpiryNotification:  types.BoolValue(plan.ExpiryNotification),
+		UpsideDown:          types.BoolValue(plan.UpsideDown),
+		IgnoreTls:           types.BoolValue(plan.IgnoreTls),
+		AcceptedStatusCodes: types.ListValueMust(types.StringType, []attr.Value{types.StringValue("200")}),
+		NotificationIDList:  types.ListValueMust(types.Int64Type, []attr.Value{types.Int64Value(5)}),
+		Tags:                providerTag,
 	}
-	if len(providerPlan.NotificationIDList.Elements()) == 0 {
+	return &plan, &providerPlan, nil
+}
+
+func TestMonitorConvert(t *testing.T) {
+	var providerPlan MonitorResourceModel
+	plan, _, diag := setupTest()
+	if diag != nil {
+		t.Fatal(diag)
+	}
+
+	diag = providerPlan.ConvertFrom(*plan)
+	if diag.HasError() {
+		t.Fatal(diag)
+	}
+
+	result, diag := providerPlan.Convert()
+	if diag.HasError() {
+		t.Fatal(diag)
+	}
+
+	byteResult, _ := json.Marshal(result)
+	bytePlan, _ := json.Marshal(plan)
+
+	t.Logf("%+v", providerPlan)
+
+	if bytes.Equal(byteResult, bytePlan) {
 		t.Fatal("failed to convert")
 	}
 }
