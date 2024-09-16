@@ -40,7 +40,7 @@ type Monitor struct {
 	Name                                string       `json:"name"`
 	Description                         string       `json:"description,omitempty"`
 	PathName                            string       `json:"pathName,omitempty"`
-	Parent                              string       `json:"parent,omitempty"`
+	Parent                              int64        `json:"parent,omitempty"`
 	ChildrenIDs                         []int64      `json:"childrenIDs,omitempty"`
 	Url                                 string       `json:"url"`
 	Method                              string       `json:"method,omitempty"`

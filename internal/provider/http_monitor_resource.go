@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -58,8 +59,13 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				Required:            true,
 				MarkdownDescription: "Options for monitor display name.",
 			},
-			"path_name": schema.StringAttribute{
-				Computed: true,
+			"parent": schema.Int64Attribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Optiions for group id.",
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
 			},
 			"description": schema.StringAttribute{
 				Optional:            true,
@@ -126,11 +132,13 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 				Computed:            true,
 				MarkdownDescription: "Options for body content. default to `none`.",
+				Default:             stringdefault.StaticString(""),
 			},
 			"http_option_headers": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
 				MarkdownDescription: "Options for http headers.",
+				Default:             stringdefault.StaticString(""),
 			},
 			"notification_list": schema.ListAttribute{
 				Optional:            true,
@@ -138,7 +146,7 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Options for notification id list, automatically enable default notifications.",
 				ElementType:         types.Int64Type,
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplaceIfConfigured(),
+					listplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"accepted_statuscodes": schema.ListAttribute{
@@ -173,6 +181,7 @@ func (r *httpMonitorResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Options for monitor tag",
 				Optional:            true,
 				Computed:            true,
+				Default:             mapdefault.StaticValue(types.MapNull(types.StringType)),
 			},
 		},
 	}
@@ -202,7 +211,6 @@ func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateReq
 	tflog.Debug(ctx, "[INIT_PLAN]"+fmt.Sprintf("%+v", req.Plan))
 
 	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return

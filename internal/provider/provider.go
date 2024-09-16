@@ -221,5 +221,6 @@ func (p *kumaProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewTagResource,
 		NewHttpMonitorResource,
+		NewGroupResource,
 	}
 }

@@ -13,7 +13,7 @@ type MonitorResourceModel struct {
 	ID          types.Int64  `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
-	PathName    types.String `tfsdk:"path_name"`
+	Parent      types.Int64  `tfsdk:"parent"`
 	Url         types.String `tfsdk:"url"`
 	Type        types.String `tfsdk:"type"`
 	// Active      types.Bool   `tfsdk:"active"`
@@ -50,9 +50,11 @@ func (m *MonitorResourceModel) Convert() (*kuma.Monitor, diag.Diagnostics) {
 	var newAcceptedStatusCodes []string
 	var newNotificationIDList []int64
 
-	err := m.Tags.ElementsAs(ctx, &tmpTag, true)
-	if err.HasError() {
-		return nil, err
+	if !m.Tags.IsNull() || !m.Tags.IsUnknown() {
+		err := m.Tags.ElementsAs(ctx, &tmpTag, true)
+		if err.HasError() {
+			return nil, err
+		}
 	}
 
 	for key, value := range tmpTag {
@@ -62,7 +64,7 @@ func (m *MonitorResourceModel) Convert() (*kuma.Monitor, diag.Diagnostics) {
 		})
 	}
 
-	err = m.AcceptedStatusCodes.ElementsAs(ctx, &newAcceptedStatusCodes, true)
+	err := m.AcceptedStatusCodes.ElementsAs(ctx, &newAcceptedStatusCodes, true)
 	if err.HasError() {
 		return nil, err
 	}
@@ -75,7 +77,7 @@ func (m *MonitorResourceModel) Convert() (*kuma.Monitor, diag.Diagnostics) {
 		ID:                  m.ID.ValueInt64(),
 		Name:                m.Name.ValueString(),
 		Description:         m.Description.ValueString(),
-		PathName:            m.PathName.ValueString(),
+		Parent:              m.Parent.ValueInt64(),
 		Url:                 m.Url.ValueString(),
 		Method:              m.Method.ValueString(),
 		HTTPBodyEncoding:    m.HTTPBodyEncoding.ValueString(),
@@ -102,7 +104,7 @@ func (m *MonitorResourceModel) ConvertFrom(stu kuma.Monitor) (err diag.Diagnosti
 	m.ID = types.Int64Value(stu.ID)
 	m.Name = types.StringValue(stu.Name)
 	m.Description = types.StringValue(stu.Description)
-	m.PathName = types.StringValue(stu.PathName)
+	m.Parent = types.Int64Value(stu.Parent)
 	m.Url = types.StringValue(stu.Url)
 	m.Method = types.StringValue(stu.Method)
 	m.HTTPBodyEncoding = types.StringValue(stu.HTTPBodyEncoding)
@@ -133,7 +135,11 @@ func (m *MonitorResourceModel) ConvertFrom(stu kuma.Monitor) (err diag.Diagnosti
 		newTag[tag.Name] = tag.Value
 	}
 
-	m.Tags, err = types.MapValueFrom(ctx, types.StringType, newTag)
+	if len(newTag) == 0 {
+		m.Tags = types.MapNull(types.StringType)
+	} else {
+		m.Tags, err = types.MapValueFrom(ctx, types.StringType, newTag)
+	}
 
 	return err
 }

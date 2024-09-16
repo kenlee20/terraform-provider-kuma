@@ -56,7 +56,7 @@ func setupTest() (*kuma.Monitor, *MonitorResourceModel, diag.Diagnostics) {
 		ID:                  types.Int64Value(plan.ID),
 		Name:                types.StringValue(plan.Name),
 		Description:         types.StringValue(plan.PathName),
-		PathName:            types.StringValue(plan.PathName),
+		Parent:              types.Int64Value(plan.Parent),
 		Url:                 types.StringValue(plan.Url),
 		Method:              types.StringValue(plan.Method),
 		Type:                types.StringValue(plan.Type),
