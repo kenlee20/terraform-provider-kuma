@@ -1,5 +1,5 @@
 # Configuration-based authentication
-provider "upkuapi" {
+provider "kuma" {
   username = "admin"
   password = "admin"
   host     = "http://localhost:8000"
@@ -7,9 +7,9 @@ provider "upkuapi" {
 
 terraform {
   required_providers {
-    upkuapi = {
-      source  = "registry.terraform.io/kenlee20/upkuapi"
-      version = "1.0.0"
+    kuma = {
+      source  = "registry.terraform.io/kenlee20/kuma"
+      version = "0.1.0"
     }
   }
 }

@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 	"os"
-	"terraform-provider-upkuapi/internal/kuma"
+	"terraform-provider-kuma/internal/kuma"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -51,7 +51,7 @@ type kumaProvider struct {
 
 // Metadata returns the provider type name.
 func (p *kumaProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "upkuapi"
+	resp.TypeName = "kuma"
 	resp.Version = p.version
 }
 

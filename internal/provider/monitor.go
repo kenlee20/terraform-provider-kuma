@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 
-	"terraform-provider-upkuapi/internal/kuma"
+	"terraform-provider-kuma/internal/kuma"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"

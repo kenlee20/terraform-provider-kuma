@@ -8,7 +8,7 @@ import (
 	"flag"
 	"log"
 
-	"terraform-provider-upkuapi/internal/provider"
+	"terraform-provider-kuma/internal/provider"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
@@ -21,7 +21,7 @@ import (
 
 // Run the docs generation tool, check its repository for more information on how it works and how docs
 // can be customized.
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate -provider-name upkuapi
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate -provider-name kuma
 
 var (
 	// these will be set by the goreleaser configuration
@@ -39,7 +39,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/kenlee20/upkuapi",
+		Address: "registry.terraform.io/kenlee20/kuma",
 		Debug:   debug,
 	}
 

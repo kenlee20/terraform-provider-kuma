@@ -6,7 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"terraform-provider-upkuapi/internal/kuma"
+	"terraform-provider-kuma/internal/kuma"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"

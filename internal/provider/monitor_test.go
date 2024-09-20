@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"terraform-provider-upkuapi/internal/kuma"
+	"terraform-provider-kuma/internal/kuma"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"

@@ -1,4 +1,4 @@
-module terraform-provider-upkuapi
+module terraform-provider-kuma
 
 go 1.23.0
 
