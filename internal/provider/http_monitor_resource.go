@@ -224,6 +224,17 @@ func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	notifications, err := r.client.GetDefaultNotifications()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error get notifications",
+			"Could not get notifications, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	item.NotificationIDList = append(item.NotificationIDList, notifications...)
+
 	tflog.Debug(ctx, "[INPUT_ITEM]"+fmt.Sprintf("%+v", item))
 
 	// Create new order and set the ID on the state.
@@ -231,7 +242,7 @@ func (r *httpMonitorResource) Create(ctx context.Context, req resource.CreateReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating monitor",
-			"Could not create monitor, unexpected error: "+err.Error(),
+			fmt.Sprintf("Could not create monitor, unexpected error: %+v", err),
 		)
 		return
 	}

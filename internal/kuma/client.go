@@ -26,8 +26,8 @@ func NewClient(host, username, password *string) (*Client, error) {
 	c := Client{
 		HTTPClient: &http.Client{Timeout: 300 * time.Second},
 		HostURL:    clearHost,
-		Retry:      30,
-		Interval:   5 * time.Second,
+		Retry:      10,
+		Interval:   10 * time.Second,
 	}
 
 	if username == nil || password == nil {
@@ -50,6 +50,7 @@ func NewClient(host, username, password *string) (*Client, error) {
 }
 
 func (c *Client) doRequest(method string, uri string, rb io.Reader, opts ...requestOption) ([]byte, *int, error) {
+	var error_messgae string
 	token := c.Token
 	clearUri := strings.TrimLeft(uri, "/")
 
@@ -71,16 +72,19 @@ func (c *Client) doRequest(method string, uri string, rb io.Reader, opts ...requ
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	res, err := c.HTTPClient.Do(req)
-	if res.StatusCode != http.StatusOK {
-		error_messgae := fmt.Sprintf("method %s API %s: %v", method, clearUri, err)
-		return nil, &res.StatusCode, fmt.Errorf("status: %d, message: %s, body: %s", res.StatusCode, error_messgae, res.Body)
+	if err != nil {
+		error_messgae = fmt.Sprintf("method %s API %s: %v", method, clearUri, err)
 	}
 
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, &res.StatusCode, err
+	body, readErr := io.ReadAll(res.Body)
+	if readErr != nil {
+		return nil, &res.StatusCode, readErr
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, &res.StatusCode, fmt.Errorf("status: %s, message: %s, body: %s", res.Status, error_messgae, body)
 	}
 
 	return body, &res.StatusCode, nil

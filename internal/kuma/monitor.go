@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (c *Client) GetMonitors() ([]Monitor, error) {
@@ -46,13 +47,6 @@ func (c *Client) GetMonitor(id int64) (*Monitor, error) {
 }
 
 func (c *Client) CreateMonitor(monitor Monitor) (*int64, error) {
-	defaultNotification, err := c.GetDefaultNotifications()
-	if err != nil {
-		return nil, err
-	}
-
-	monitor.NotificationIDList = append(monitor.NotificationIDList, defaultNotification...)
-
 	// Marshal the monitor
 	rb, err := json.Marshal(monitor)
 	if err != nil {
@@ -113,10 +107,15 @@ func (c *Client) CreateMonitorTag(monitorID int64, tagSet MonitorTag) error {
 	}
 
 	for i := 0; ; i++ {
-		_, statusCode, err := c.doRequest("POST", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag", strings.NewReader(string(rb)))
-		if *statusCode == 200 {
+		_, status, err := c.doRequest("POST", "/monitors/"+strconv.FormatInt(monitorID, 10)+"/tag", strings.NewReader(string(rb)))
+		switch *status {
+		case 200:
 			return nil
+		case 404:
+			return err
 		}
+
+		time.Sleep(c.Interval)
 
 		monitor, getErr := c.GetMonitor(monitorID)
 		if getErr != nil {

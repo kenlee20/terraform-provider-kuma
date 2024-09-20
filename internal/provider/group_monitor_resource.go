@@ -95,6 +95,8 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
+	tflog.Debug(ctx, "Monitor create done")
+
 	for _, tag := range item.Tags {
 		if err = r.client.CreateMonitorTag(*monitorID, tag); err != nil {
 			resp.Diagnostics.AddError(
